@@ -23,6 +23,7 @@ interface NavItem {
   label: string;
   icon: string;
   section: string;
+  children?: Array<{ slug: string; to: string; label: string }>;
   /** Permission key required. undefined = always visible (admin + org user). */
   permission?: string;
   /** Extra slugs that also mark this item active */
@@ -43,7 +44,10 @@ const NAV_ITEMS: NavItem[] = [
   { section: 'Employees',      slug: 'employees',              to: '/employees',              label: 'Employees',             icon: 'users-group',    permission: 'employee:read' },
 
   // ── Templates ───────────────────────────────────────────────────────────────
-  { section: 'Templates',      slug: 'templates',              to: '/templates',              label: 'Templates',             icon: 'article',        permission: 'template:read' },
+  { section: 'Templates',      slug: 'templates',              to: '/templates',              label: 'Templates',             icon: 'article',        permission: 'template:read', children: [
+    { slug: 'templates/custom', to: '/templates/custom', label: 'Custom template' },
+    { slug: 'templates/library', to: '/templates/library', label: 'Template Library' },
+  ] },
 
   // ── Campaigns ───────────────────────────────────────────────────────────────
   { section: 'Campaigns',      slug: 'api/campaigns',          to: '/api/campaigns',          label: 'Campaigns',             icon: 'article',        permission: 'campaign:read',   alsoActive: ['api/campaigns/new'] },
@@ -66,8 +70,13 @@ export function Sidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
   const location   = useLocation();
   const activeSlug = slugFromPath(location.pathname);
   const [filter, setFilter] = useState('');
+  const [templatesOpen, setTemplatesOpen] = useState(location.pathname.startsWith('/templates'));
   const rootRef = useRef<HTMLElement>(null);
   useFocusTrap(rootRef, drawerOpen, '.ax-sidebar__filter');
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/templates')) setTemplatesOpen(true);
+  }, [location.pathname]);
 
   const userRole    = useAuthStore((s) => s.userRole);
   const permissions = useAuthStore((s) => s.permissions);
@@ -105,8 +114,12 @@ export function Sidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
   // Derive which sections to render (only sections that have ≥1 visible item)
   const visibleItems = NAV_ITEMS.filter(canSee).filter((item) => {
     if (!filter.trim()) return true;
-    return item.label.toLowerCase().includes(filter.toLowerCase()) ||
-           item.slug.includes(filter.toLowerCase());
+    const query = filter.toLowerCase();
+    return item.label.toLowerCase().includes(query) ||
+           item.slug.includes(query) ||
+           item.children?.some((child) =>
+             child.label.toLowerCase().includes(query) || child.slug.includes(query),
+           );
   });
 
   // Group by section preserving order, collapsing empty sections
@@ -127,6 +140,58 @@ export function Sidebar({ drawerOpen = false }: { drawerOpen?: boolean }) {
     const isActive = slugs.some((s) =>
       s.includes('*') ? activeSlug.startsWith(s.replace('*', '')) : activeSlug === s,
     );
+
+    if (item.children) {
+      const parentMatchesFilter = !filter.trim() ||
+        item.label.toLowerCase().includes(filter.toLowerCase()) ||
+        item.slug.includes(filter.toLowerCase());
+      const visibleChildren = item.children.filter((child) =>
+        parentMatchesFilter ||
+        child.label.toLowerCase().includes(filter.toLowerCase()) ||
+        child.slug.includes(filter.toLowerCase()),
+      );
+      const childIsActive = item.children.some((child) => activeSlug === child.slug);
+      const groupId = `ax-nav-children-${item.slug.replaceAll('/', '-')}`;
+
+      rendered.push(
+        <div className="ax-nav__group" key={item.slug}>
+          <button
+            type="button"
+            className={`ax-nav__item ax-nav__item--parent${childIsActive ? ' ax-nav__item--active is-active' : ''}`}
+            role="treeitem"
+            aria-level={2}
+            aria-expanded={templatesOpen}
+            aria-controls={groupId}
+            onClick={() => setTemplatesOpen((open) => !open)}
+          >
+            <Icon name={item.icon} className="ax-nav__icon" />
+            <span className="ax-nav__label">{item.label}</span>
+            <svg className="ax-nav__caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+          <div className="ax-nav__children" id={groupId} role="group" hidden={!templatesOpen}>
+            {visibleChildren.map((child) => {
+              const childActive = activeSlug === child.slug;
+              return (
+                <Link
+                  key={child.slug}
+                  className={`ax-nav__item ax-nav__item--child${childActive ? ' ax-nav__item--active is-active' : ''}`}
+                  role="treeitem"
+                  aria-level={3}
+                  aria-current={childActive ? 'page' : undefined}
+                  to={child.to}
+                  tabIndex={childActive ? 0 : -1}
+                >
+                  <span className="ax-nav__label">{child.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>,
+      );
+      continue;
+    }
 
     rendered.push(
       <Link

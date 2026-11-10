@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { PageHead } from "../../components/shell/PageHead";
 import {
   listTemplates,
@@ -567,6 +567,12 @@ function TemplateDetails({
 
 export function Templates() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const templateView = location.pathname.endsWith("/custom")
+    ? "custom"
+    : location.pathname.endsWith("/library")
+      ? "library"
+      : "all";
   const [templates, setTemplates] = useState<PhishingTemplate[]>([]);
   const [predefinedTemplates, setPredefinedTemplates] = useState<PredefinedTemplate[]>([]);
   const [loadError, setLoadError] = useState('');
@@ -660,30 +666,37 @@ export function Templates() {
         saved: false,
       })),
   ];
+  const visibleTemplateRows = templateRows.filter(({ predefined, saved }) =>
+    templateView === "custom" ? saved : templateView === "library" ? predefined !== null : true,
+  );
 
   return (
     <>
       <PageHead
-        title="Templates"
-        subtitle="Create, inspect, and preview authorised phishing simulation templates."
+        title={templateView === "custom" ? "Custom template" : templateView === "library" ? "Template Library" : "Templates"}
+        subtitle={templateView === "library"
+          ? "Browse predefined templates for authorised phishing simulations."
+          : "Create, inspect, and preview authorised phishing simulation templates."}
       />
       {loadError && <div role="alert" className="ax-alert ax-alert--danger"><p className="ax-alert__message">{loadError}</p></div>}
-      <div
-        className="ax-cluster"
-        style={{
-          gap: "var(--ax-space-2)",
-          marginBlockEnd: "var(--ax-space-5)",
-        }}
-      >
-        <button
-          type="button"
-          className="ax-btn ax-btn--primary"
-          onClick={() => setModal("create")}
+      {templateView !== "library" && (
+        <div
+          className="ax-cluster"
+          style={{
+            gap: "var(--ax-space-2)",
+            marginBlockEnd: "var(--ax-space-5)",
+          }}
         >
-          {ICON_PLUS}
-          <span className="ax-btn__label">Create Template</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            className="ax-btn ax-btn--primary"
+            onClick={() => setModal("create")}
+          >
+            {ICON_PLUS}
+            <span className="ax-btn__label">Create Template</span>
+          </button>
+        </div>
+      )}
       <div className="ax-dash-grid">
         <section
           className="ax-card ax-col--12"
@@ -694,7 +707,7 @@ export function Templates() {
             <div className="ax-card__titles">
               <h2 className="ax-card__title">Phishing templates</h2>
               <p className="ax-card__subtitle">
-                {templateRows.length} template{templateRows.length === 1 ? "" : "s"}{" "}
+                {visibleTemplateRows.length} template{visibleTemplateRows.length === 1 ? "" : "s"}{" "}
                 available for campaign creation.
               </p>
             </div>
@@ -721,7 +734,7 @@ export function Templates() {
                 </tr>
               </thead>
               <tbody>
-                {templateRows.map(({ template, predefined, saved }) => (
+                {visibleTemplateRows.map(({ template, predefined, saved }) => (
                   <tr className="ax-table__row" key={predefined?.key ?? template.id}>
                     <td
                       className="ax-table__td"

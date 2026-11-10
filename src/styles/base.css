@@ -339,7 +339,8 @@ hr {
   inset-block: 0;
   inset-inline-start: 0;
   inline-size: var(--ax-sidebar-w);
-  z-index: var(--ax-z-sidebar);
+  /* z-index: var(--ax-z-sidebar); */
+  z-index:1;
   display: flex;
   flex-direction: column;
   background: var(--ax-sidebar-bg, var(--ax-surface-raised));

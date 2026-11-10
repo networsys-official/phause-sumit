@@ -6,79 +6,79 @@ const ARTICLES = [
     title: 'Email Allowlisting',
     description: 'Setup email allowlisting',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/mail-stacked.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/360004430516-Allowlisting-Introduction',
+    url: '#',
   },
   {
     title: 'Direct Email Injection',
     description: 'Bypass the need for allowlisting',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/icon-mailbox.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/13340840238863-Email-Delivery-Providers-Overview',
+    url: '#',
   },
   {
     title: 'Phishing Emails',
     description: 'Phishing email deep-dive',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/library.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/360004630656-Email-Templates-Introduction',
+    url: '#',
   },
   {
     title: 'Campaign Setup',
     description: 'Campaign setup walkthrough',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/clipboard-text-edit.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/4404682357391-Campaign-Creation-Interactive-Wizard',
+    url: '#',
   },
   {
     title: 'Employee Lists',
     description: 'Seamlessly upload employee info',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/people-team.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/360004613816-Employee-List-Introduction',
+    url: '#',
   },
   {
     title: 'Single Sign-On',
     description: 'Integrate with your auth provider',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/scan-person.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/8261838285967-Single-Sign-On-Introduction',
+    url: '#',
   },
   {
     title: 'White-Labelling',
     description: 'Use your own branding & domain',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/people-home.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/5288924810511-Platform-White-Labelling',
+    url: '#',
   },
   {
     title: 'Breach Monitoring',
     description: 'Run daily breach scans',
     icon: 'https://d3p8e1mvy30w84.cloudfront.net/XtreamV2/assets/images/svgs/person-available.svg',
-    url: 'https://help.caniphish.com/hc/en-us/articles/8048847099279-Dark-Web-Monitoring-Overview',
+    url: '#',
   },
 ];
 
 const QUICK_LINKS = [
   {
     label: 'Platform Pricing',
-    url: 'https://caniphish.com/platform/pricing',
+    url: '#',
   },
   {
     label: 'Platform Status',
-    url: 'https://caniphish.com/status',
+    url: '#',
   },
   {
     label: 'Platform Information',
-    url: 'https://caniphish.com/platform/information',
+    url: '#',
   },
   {
     label: 'Security & Compliance',
-    url: 'https://caniphish.com/security',
+    url: '#',
   },
 ];
 
 const FREE_RESOURCES = [
   {
     label: 'Free Cyber Security Posters',
-    url: 'https://caniphish.com/free-cyber-security-awareness-posters',
+    url: '#',
   },
   {
     label: 'Free Cyber Security Wallpapers',
-    url: 'https://caniphish.com/free-cyber-security-wallpapers',
+    url: '#',
   },
 ];
 
@@ -177,7 +177,7 @@ export default function KnowledgeBaseDropdown() {
             </div>
 
             <a
-              href="https://help.caniphish.com/hc/en-us"
+              href="#"
               target="_blank"
               rel="noopener noreferrer"
               className="kb-mega__browse"

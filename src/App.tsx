@@ -527,7 +527,7 @@ export function App() {
             <Route path="organisations/org/:organisationId" element={guardedWrap(OrganisationsOrgDetail, 'organization:read')} />
             <Route path="organisations/org-user" element={adminOnlyWrap(OrganisationsOrgUser)} />
             <Route path="employees" element={guardedWrap(Employees, 'employee:read')} />
-            <Route path="templates" element={guardedWrap(Templates, 'template:read')} />
+            <Route path="templates/*" element={guardedWrap(Templates, 'template:read')} />
             <Route path="api/campaigns" element={guardedWrap(CampaignList, 'campaign:read')} />
             <Route path="api/campaigns/new" element={guardedWrap(CampaignCreate, 'campaign:create')} />
             <Route path="api/campaigns/:campaignId" element={guardedWrap(CampaignDetails, 'campaign:read')} />
