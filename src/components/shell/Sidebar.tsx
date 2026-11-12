@@ -44,10 +44,14 @@ const NAV_ITEMS: NavItem[] = [
   { section: 'Employees',      slug: 'employees',              to: '/employees',              label: 'Employees',             icon: 'users-group',    permission: 'employee:read' },
 
   // ── Templates ───────────────────────────────────────────────────────────────
-  { section: 'Templates',      slug: 'templates',              to: '/templates',              label: 'Templates',             icon: 'article',        permission: 'template:read', children: [
-    { slug: 'templates/custom', to: '/templates/custom', label: 'Custom template' },
-    { slug: 'templates/library', to: '/templates/library', label: 'Template Library' },
-  ] },
+  { section: 'Templates',      slug: 'templates',              to: '/templates',              label: 'Templates',             icon: 'article',        permission: 'template:read', 
+    
+  //   children: [
+  //   { slug: 'templates/custom', to: '/templates/custom', label: 'Custom template' },
+  //   { slug: 'templates/library', to: '/templates/library', label: 'Template Library' },
+  // ] 
+
+},
 
   // ── Campaigns ───────────────────────────────────────────────────────────────
   { section: 'Campaigns',      slug: 'api/campaigns',          to: '/api/campaigns',          label: 'Campaigns',             icon: 'article',        permission: 'campaign:read',   alsoActive: ['api/campaigns/new'] },
@@ -57,7 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { section: 'Reports',        slug: 'reports',                to: '/reports',                label: 'Reports & Risk Scores', icon: 'files',          permission: 'report:read' },
 
   // ── Training ────────────────────────────────────────────────────────────────
-  { section: 'Training',       slug: 'training',               to: '/training',               label: 'Training & Remediation',icon: 'school',         permission: 'training:read' },
+  // { section: 'Training',       slug: 'training',               to: '/training',               label: 'Training & Remediation',icon: 'school',         permission: 'training:read' },
 
   // ── Billing ─────────────────────────────────────────────────────────────────
   { section: 'Billing',        slug: 'billing',                to: '/billing',                label: 'Billing & Plans',       icon: 'credit-card',    permission: 'plan:read' },
