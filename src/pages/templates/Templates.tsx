@@ -6,9 +6,6 @@ import {
   createTemplate as createTemplateApi,
   updateTemplate as updateTemplateApi,
   deleteTemplate as deleteTemplateApi,
-  listPredefinedTemplates,
-  createTemplateFromPredefined,
-  type PredefinedTemplate,
 } from "../../api/templates/templates.api";
 import { useApiErrorHandler } from "../../hooks/useApiErrorHandler";
 
@@ -36,6 +33,7 @@ export interface PhishingTemplate {
 type TemplateFormValues = Omit<PhishingTemplate, "id">;
 type ModalState =
   | "create"
+  | "choose-create"
   | { edit: PhishingTemplate }
   | { preview: PhishingTemplate }
   | { detail: PhishingTemplate }
@@ -134,6 +132,14 @@ const labelFor = <T extends string>(
   value: T,
 ) => options.find((option) => option.value === value)?.label ?? value;
 
+const getTemplatePreviewHtml = (html: string) =>
+  html
+    .replaceAll("{{tracking_link}}", "#preview-link")
+    .replaceAll(
+      "{{tracking_pixel}}",
+      "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    );
+
 function TemplateForm({
   initial,
   mode,
@@ -186,7 +192,7 @@ function TemplateForm({
         alignItems: "center",
         justifyContent: "center",
         padding: "var(--ax-space-4)",
-        background: "rgba(15,18,25,.5)",
+        background: "rgba(15, 23, 42, 0.62)",
         backdropFilter: "blur(4px)",
       }}
     >
@@ -278,7 +284,8 @@ function TemplateForm({
                     marginBlockStart: "var(--ax-space-2)",
                     border: "1px solid var(--ax-border)",
                     borderRadius: "var(--ax-radius-md)",
-                    background: "#fff",
+                    background: "var(--ax-card, #fff)",
+                    boxShadow: "inset 0 0 0 1px rgba(148, 163, 184, 0.18)",
                   }}
                 />
               </div>
@@ -419,7 +426,7 @@ function TemplatePreview({
         alignItems: "center",
         justifyContent: "center",
         padding: "var(--ax-space-4)",
-        background: "rgba(15,18,25,.5)",
+        background: "rgba(15, 23, 42, 0.62)",
         backdropFilter: "blur(4px)",
       }}
     >
@@ -461,13 +468,14 @@ function TemplatePreview({
           <iframe
             title={`${template.name} HTML preview`}
             sandbox="allow-popups allow-popups-to-escape-sandbox"
-            srcDoc={`<!doctype html><html><body style="font-family:Arial,sans-serif;color:#17202a;padding:24px;line-height:1.5">${renderedHtml}</body></html>`}
+            srcDoc={`<!doctype html><html><body style="font-family:Arial,sans-serif;color:#17202a;padding:24px;line-height:1.5;background:#ffffff">${renderedHtml}</body></html>`}
             style={{
               width: "100%",
               minHeight: 280,
               border: "1px solid var(--ax-border)",
               borderRadius: "var(--ax-radius-md)",
-              background: "#fff",
+              background: "var(--ax-card, #fff)",
+              boxShadow: "inset 0 0 0 1px rgba(148, 163, 184, 0.18)",
             }}
           />
           <div>
@@ -476,6 +484,10 @@ function TemplatePreview({
               style={{
                 whiteSpace: "pre-wrap",
                 color: "var(--ax-text-muted)",
+                background: "var(--ax-surface, rgba(148, 163, 184, 0.06))",
+                border: "1px solid var(--ax-border)",
+                borderRadius: "var(--ax-radius-md)",
+                padding: "var(--ax-space-3)",
                 fontFamily: "var(--ax-font-mono)",
                 fontSize: "var(--ax-text-sm)",
               }}
@@ -508,7 +520,8 @@ function TemplateDetails({
         alignItems: "center",
         justifyContent: "center",
         padding: "var(--ax-space-4)",
-        background: "rgba(15,18,25,.5)",
+        background: "rgba(15, 23, 42, 0.62)",
+        backdropFilter: "blur(4px)",
       }}
     >
       <div
@@ -568,24 +581,16 @@ function TemplateDetails({
 export function Templates() {
   const navigate = useNavigate();
   const location = useLocation();
-  const templateView = location.pathname.endsWith("/custom")
-    ? "custom"
-    : location.pathname.endsWith("/library")
-      ? "library"
-      : "all";
+  const templateView = location.pathname.endsWith("/custom") ? "custom" : "all";
   const [templates, setTemplates] = useState<PhishingTemplate[]>([]);
-  const [predefinedTemplates, setPredefinedTemplates] = useState<PredefinedTemplate[]>([]);
   const [loadError, setLoadError] = useState('');
-  const [usingPresetKey, setUsingPresetKey] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const handleApiError = useApiErrorHandler();
 
   useEffect(() => {
     listTemplates().then(setTemplates).catch((err: unknown) => {
       setLoadError(handleApiError(err, 'Unable to load templates.'));
-    });
-    listPredefinedTemplates().then(setPredefinedTemplates).catch((err: unknown) => {
-      setLoadError(handleApiError(err, 'Unable to load predefined templates.'));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -599,21 +604,12 @@ export function Templates() {
       setLoadError(error instanceof Error ? error.message : 'Unable to create template.');
     }
   };
-  const useTemplateInCampaign = async (
-    template: PhishingTemplate,
-    preset?: PredefinedTemplate,
-  ) => {
-    setUsingPresetKey(preset?.key ?? template.id);
+  const useTemplateInCampaign = async (template: PhishingTemplate) => {
     setLoadError('');
     try {
-      const campaignTemplate = preset
-        ? await createTemplateFromPredefined(preset.key)
-        : template;
-      navigate(`/api/campaigns/new?templateId=${encodeURIComponent(campaignTemplate.id)}`);
+      navigate(`/api/campaigns/new?templateId=${encodeURIComponent(template.id)}`);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Unable to use this template for a campaign.');
-    } finally {
-      setUsingPresetKey(null);
     }
   };
   const updateTemplate = async (values: TemplateFormValues) => {
@@ -638,195 +634,240 @@ export function Templates() {
       }
     }
   };
-  const templateRows: Array<{
-    template: PhishingTemplate;
-    predefined: PredefinedTemplate | null;
-    saved: boolean;
-  }> = [
-    ...templates.map((template) => ({
-      template,
-      predefined: predefinedTemplates.find((preset) => preset.name === template.name) ?? null,
-      saved: true,
-    })),
-    ...predefinedTemplates
-      .filter((preset) => !templates.some((template) => template.name === preset.name))
-      .map((preset) => ({
-        template: {
-          id: `predefined-${preset.key}`,
-          name: preset.name,
-          subject: preset.subject,
-          htmlBody: preset.htmlBody,
-          textBody: preset.textBody,
-          lureType: preset.lureType as TemplateLureType,
-          category: preset.category as TemplateCategory,
-          difficulty: preset.difficulty as TemplateDifficulty,
-          disclaimerEnabled: false,
-        },
-        predefined: preset,
-        saved: false,
-      })),
-  ];
-  const visibleTemplateRows = templateRows.filter(({ predefined, saved }) =>
-    templateView === "custom" ? saved : templateView === "library" ? predefined !== null : true,
+  const templateRows = templates.map((template) => ({
+    template,
+    saved: true,
+  }));
+  const visibleTemplateRows = templateRows.filter(({ saved }) =>
+    templateView === "custom" ? saved : true,
   );
 
   return (
     <>
+      <style>{`
+        .tpl-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+        .tpl-toolbar__left, .tpl-toolbar__right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .tpl-view-toggle { display:inline-flex; padding:4px; gap:3px; border:1px solid var(--ax-border); border-radius:12px; background:var(--ax-surface, rgba(127,127,127,.06)); }
+        .tpl-view-toggle button { display:inline-flex; align-items:center; gap:7px; border:0; border-radius:8px; padding:8px 12px; background:transparent; color:var(--ax-text-muted); cursor:pointer; font:inherit; font-size:13px; transition:background .2s ease,color .2s ease,box-shadow .2s ease; }
+        .tpl-view-toggle button[aria-pressed="true"] { color:var(--ax-text-strong); background:var(--ax-card, #fff); box-shadow:0 1px 4px rgba(15,23,42,.12); }
+        .tpl-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+        .tpl-card { min-width:0; overflow:hidden; border:1px solid var(--ax-border); border-radius:15px; background:var(--ax-card, #fff); transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease; }
+        .tpl-card:hover { transform:translateY(-3px); border-color:var(--ax-primary, #2780c3); box-shadow:0 12px 28px rgba(15,23,42,.08); }
+        .tpl-card__preview { height:218px; overflow:hidden; border-bottom:1px solid var(--ax-border); background:#f4f6f9; position:relative; }
+        .tpl-card__preview iframe { display:block; width:100%; height:100%; border:0; background:#fff; pointer-events:none; }
+        .tpl-card__preview-empty { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; color:#64748b; background:linear-gradient(145deg,#f8fafc,#e9eff6); }
+        .tpl-card__preview-empty svg { width:36px;height:36px; }
+        .tpl-card__body { padding:16px; }
+        .tpl-card__title { margin:0; color:var(--ax-text-strong); font-size:15px; font-weight:650; line-height:1.4; overflow-wrap:anywhere; }
+        .tpl-card__subject { margin:5px 0 13px; color:var(--ax-text-muted); font-size:13px; line-height:1.5; min-height:20px; }
+        .tpl-card__meta { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:15px; }
+        .tpl-chip { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:5px 9px; background:var(--ax-surface, #f1f5f9); color:var(--ax-text-muted); font-size:11px; line-height:1.2; }
+        .tpl-chip--easy { color:#07834c; background:rgba(16,185,129,.11); }
+        .tpl-chip--medium { color:#a16207; background:rgba(245,158,11,.13); }
+        .tpl-chip--hard { color:#d94820; background:rgba(249,115,22,.12); }
+        .tpl-card__actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+        .tpl-card__actions .ax-btn { justify-content:center; min-width:0; }
+        .tpl-list { overflow-x:auto; }
+        .tpl-empty { padding:52px 20px; text-align:center; color:var(--ax-text-muted); }
+        .tpl-empty strong { display:block; margin-bottom:6px; color:var(--ax-text-strong); font-size:15px; }
+        .tpl-choice-overlay { position:fixed; inset:0; z-index:1100; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(9,16,28,.58); backdrop-filter:blur(8px); animation:tpl-fade .18s ease both; }
+        .tpl-choice { width:min(100%,620px); overflow:hidden; border:1px solid rgba(255,255,255,.5); border-radius:20px; background:var(--ax-card,#fff); box-shadow:0 28px 90px rgba(0,0,0,.24); animation:tpl-rise .24s cubic-bezier(.2,.8,.2,1) both; }
+        .tpl-choice__head { padding:25px 26px 18px; display:flex; justify-content:space-between; gap:16px; }
+        .tpl-choice__eyebrow { display:block; margin-bottom:7px; color:var(--ax-primary,#2780c3); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+        .tpl-choice__title { margin:0; color:var(--ax-text-strong); font-size:22px; font-weight:700; letter-spacing:-.03em; }
+        .tpl-choice__subtitle { margin:7px 0 0; color:var(--ax-text-muted); font-size:13px; line-height:1.55; }
+        .tpl-choice__options { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:8px 26px 26px; }
+        .tpl-choice__option { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:12px; min-height:180px; padding:18px; text-align:left; border:1px solid var(--ax-border); border-radius:14px; background:var(--ax-card,#fff); color:var(--ax-text-strong); cursor:pointer; transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease; }
+        .tpl-choice__option:not(:disabled):hover { transform:translateY(-2px); border-color:var(--ax-primary,#2780c3); box-shadow:0 10px 24px rgba(39,128,195,.12); }
+        .tpl-choice__option:disabled { cursor:not-allowed; opacity:.58; background:var(--ax-surface, #f8fafc); }
+        .tpl-choice__icon { width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:rgba(39,128,195,.1);color:var(--ax-primary,#2780c3); }
+        .tpl-choice__icon svg { width:21px;height:21px; }
+        .tpl-choice__option strong { font-size:14px; }
+        .tpl-choice__option small { color:var(--ax-text-muted); font-size:12px; line-height:1.5; }
+        .tpl-choice__badge { position:absolute; top:15px; right:14px; padding:4px 7px; border-radius:999px; background:rgba(148,163,184,.16); color:var(--ax-text-muted); font-size:10px; font-weight:700; }
+        .tpl-choice__foot { padding:13px 26px; border-top:1px solid var(--ax-border); color:var(--ax-text-muted); font-size:11px; }
+        @keyframes tpl-fade { from{opacity:0}to{opacity:1} }
+        @keyframes tpl-rise { from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)} }
+        @media(max-width:1100px){.tpl-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+        @media(max-width:650px){.tpl-grid{grid-template-columns:1fr}.tpl-choice__options{grid-template-columns:1fr;padding:8px 18px 20px}.tpl-choice__head{padding:20px 18px 14px}.tpl-choice__option{min-height:145px}.tpl-choice__title{font-size:19px}.tpl-choice__foot{padding-inline:18px}.tpl-card__preview{height:200px}}
+        @media(prefers-reduced-motion:reduce){.tpl-card,.tpl-choice__option,.tpl-choice-overlay,.tpl-choice{animation:none!important;transition:none!important}}
+      `}</style>
       <PageHead
-        title={templateView === "custom" ? "Custom template" : templateView === "library" ? "Template Library" : "Templates"}
-        subtitle={templateView === "library"
-          ? "Browse predefined templates for authorised phishing simulations."
-          : "Create, inspect, and preview authorised phishing simulation templates."}
+        title={templateView === "custom" ? "Custom templates" : "Templates"}
+        subtitle="Create, inspect, and preview authorised phishing simulation templates."
       />
       {loadError && <div role="alert" className="ax-alert ax-alert--danger"><p className="ax-alert__message">{loadError}</p></div>}
-      {templateView !== "library" && (
-        <div
-          className="ax-cluster"
-          style={{
-            gap: "var(--ax-space-2)",
-            marginBlockEnd: "var(--ax-space-5)",
-          }}
-        >
+
+      <div className="tpl-toolbar">
+        <div className="tpl-toolbar__left">
           <button
             type="button"
             className="ax-btn ax-btn--primary"
-            onClick={() => setModal("create")}
+            onClick={() => setModal("choose-create")}
           >
             {ICON_PLUS}
             <span className="ax-btn__label">Create Template</span>
           </button>
+          <span style={{ color: "var(--ax-text-muted)", fontSize: 13 }}>
+            {visibleTemplateRows.length} template{visibleTemplateRows.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div className="tpl-toolbar__right">
+          <div className="tpl-view-toggle" role="group" aria-label="Template display mode">
+            <button type="button" aria-pressed={viewMode === "grid"} onClick={() => setViewMode("grid")}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              Grid
+            </button>
+            <button type="button" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+              List
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section className="ax-card" role="region" aria-label="Phishing templates">
+        <div className="ax-card__header">
+          <div className="ax-card__titles">
+            <h2 className="ax-card__title">Phishing templates</h2>
+            <p className="ax-card__subtitle">
+              Browse your templates, preview their email content, and select one for a campaign.
+            </p>
+          </div>
+        </div>
+
+        <div className="ax-card__body">
+          {visibleTemplateRows.length === 0 ? (
+            <div className="tpl-empty">
+              <strong>No templates yet</strong>
+              Create your first template to start building your library.
+              <div style={{ marginTop: 16 }}>
+                <button type="button" className="ax-btn ax-btn--primary" onClick={() => setModal("choose-create")}>
+                  {ICON_PLUS} Create your first template
+                </button>
+              </div>
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="tpl-grid">
+              {visibleTemplateRows.map(({ template, saved }) => (
+                <article className="tpl-card" key={template.id}>
+                  <div className="tpl-card__preview">
+                    {template.htmlBody.trim() ? (
+                      <iframe
+                        title={`${template.name} email thumbnail`}
+                        sandbox=""
+                        tabIndex={-1}
+                        srcDoc={`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:18px;font-family:Arial,sans-serif;color:#202a35;line-height:1.45;font-size:13px;overflow:hidden">${getTemplatePreviewHtml(template.htmlBody)}</body></html>`}
+                      />
+                    ) : (
+                      <div className="tpl-card__preview-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="m3 6 9 7 9-7M3 18l6-6m12 6-6-6"/></svg>
+                        <span style={{ fontSize: 12 }}>Email preview unavailable</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="tpl-card__body">
+                    <h3 className="tpl-card__title">{template.name}</h3>
+                    <p className="tpl-card__subject">{template.subject || "No subject provided"}</p>
+                    <div className="tpl-card__meta">
+                      <span className={`tpl-chip tpl-chip--${template.difficulty}`}>{template.difficulty[0].toUpperCase() + template.difficulty.slice(1)}</span>
+                      <span className="tpl-chip">{labelFor(CATEGORIES, template.category)}</span>
+                      <span className="tpl-chip">{labelFor(LURE_TYPES, template.lureType)}</span>
+                    </div>
+                    <div className="tpl-card__actions">
+                      <button type="button" className="ax-btn ax-btn--secondary ax-btn--sm" onClick={() => setModal({ preview: template })}>
+                        {ICON_EYE}<span>Preview</span>
+                      </button>
+                      {saved ? (
+                        <button type="button" className="ax-btn ax-btn--secondary ax-btn--sm" onClick={() => setModal({ edit: template })}>
+                          {ICON_EDIT}<span>Edit</span>
+                        </button>
+                      ) : (
+                        <button type="button" className="ax-btn ax-btn--secondary ax-btn--sm" onClick={() => setModal({ detail: template })}>Details</button>
+                      )}
+                      <button type="button" className="ax-btn ax-btn--primary ax-btn--sm" onClick={() => void useTemplateInCampaign(template)}>
+                        Use in campaign
+                      </button>
+                      {saved && (
+                        <button type="button" className="ax-btn ax-btn--ghost ax-btn--sm" onClick={() => deleteTemplate(template)}>
+                          {ICON_DELETE}<span>Delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="tpl-list">
+              <table className="ax-table ax-table--hover">
+                <thead className="ax-table__head">
+                  <tr>
+                    {["Name", "Subject", "Lure type", "Category", "Difficulty", "Disclaimer", "Actions"].map((heading) => (
+                      <th className="ax-table__th" scope="col" key={heading}>{heading}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleTemplateRows.map(({ template, saved }) => (
+                    <tr className="ax-table__row" key={template.id}>
+                      <td className="ax-table__td" style={{ color: "var(--ax-text-strong)", fontWeight: "var(--ax-weight-medium)", minWidth: 180 }}>{template.name}</td>
+                      <td className="ax-table__td" style={{ minWidth: 240 }}>{template.subject}</td>
+                      <td className="ax-table__td">{labelFor(LURE_TYPES, template.lureType)}</td>
+                      <td className="ax-table__td">{labelFor(CATEGORIES, template.category)}</td>
+                      <td className="ax-table__td"><span className="ax-badge ax-badge--soft ax-badge--pill">{template.difficulty}</span></td>
+                      <td className="ax-table__td">{template.disclaimerEnabled ? "Enabled" : "Disabled"}</td>
+                      <td className="ax-table__td">
+                        <div className="ax-cluster" style={{ gap: "var(--ax-space-1)", flexWrap: "nowrap" }}>
+                          <button type="button" className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm" aria-label={`Preview ${template.name}`} onClick={() => setModal({ preview: template })}>{ICON_EYE}</button>
+                          {saved && <button type="button" className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm" aria-label={`Edit ${template.name}`} onClick={() => setModal({ edit: template })}>{ICON_EDIT}</button>}
+                          {saved && <button type="button" className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm" aria-label={`Delete ${template.name}`} onClick={() => deleteTemplate(template)}>{ICON_DELETE}</button>}
+                          <button type="button" className="ax-btn ax-btn--ghost ax-btn--sm" onClick={() => setModal({ detail: template })}>Details</button>
+                          <button type="button" className="ax-btn ax-btn--primary ax-btn--sm" onClick={() => void useTemplateInCampaign(template)}>Use</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {modal === "choose-create" && (
+        <div className="tpl-choice-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setModal(null)}>
+          <section className="tpl-choice" role="dialog" aria-modal="true" aria-labelledby="tpl-choice-title">
+            <div className="tpl-choice__head">
+              <div>
+                <span className="tpl-choice__eyebrow">Template builder</span>
+                <h2 className="tpl-choice__title" id="tpl-choice-title">How would you like to create?</h2>
+                <p className="tpl-choice__subtitle">Choose how you want to start building your phishing simulation template.</p>
+              </div>
+              <button type="button" className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm" aria-label="Close" onClick={() => setModal(null)}>{ICON_CLOSE}</button>
+            </div>
+            <div className="tpl-choice__options">
+              <button type="button" className="tpl-choice__option" onClick={() => setModal("create")}>
+                <span className="tpl-choice__icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>
+                </span>
+                <strong>Create from Scratch</strong>
+                <small>Start with a blank template and add your own email content, subject, and simulation settings.</small>
+              </button>
+              <button type="button" className="tpl-choice__option" disabled aria-disabled="true" title="AI template generation is coming soon">
+                <span className="tpl-choice__badge">Coming soon</span>
+                <span className="tpl-choice__icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 14 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"/></svg>
+                </span>
+                <strong>AI-generated template</strong>
+                <small>Generate an email template with AI using a prompt and your campaign requirements.</small>
+              </button>
+            </div>
+            <div className="tpl-choice__foot">AI generation is not available yet. You can create a template manually for now.</div>
+          </section>
         </div>
       )}
-      <div className="ax-dash-grid">
-        <section
-          className="ax-card ax-col--12"
-          role="region"
-          aria-label="Phishing templates"
-        >
-          <div className="ax-card__header">
-            <div className="ax-card__titles">
-              <h2 className="ax-card__title">Phishing templates</h2>
-              <p className="ax-card__subtitle">
-                {visibleTemplateRows.length} template{visibleTemplateRows.length === 1 ? "" : "s"}{" "}
-                available for campaign creation.
-              </p>
-            </div>
-          </div>
-          <div className="ax-table-wrap" style={{ overflowX: "auto" }}>
-            <table className="ax-table ax-table--hover">
-              <thead className="ax-table__head">
-                <tr>
-                  {[
-                    "Name",
-                    "Type",
-                    "Description",
-                    "Subject",
-                    "Lure type",
-                    "Category",
-                    "Difficulty",
-                    "Disclaimer",
-                    "Actions",
-                  ].map((heading) => (
-                    <th className="ax-table__th" scope="col" key={heading}>
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleTemplateRows.map(({ template, predefined, saved }) => (
-                  <tr className="ax-table__row" key={predefined?.key ?? template.id}>
-                    <td
-                      className="ax-table__td"
-                      style={{
-                        color: "var(--ax-text-strong)",
-                        fontWeight: "var(--ax-weight-medium)",
-                      }}
-                    >
-                      {template.name}
-                    </td>
-                    <td className="ax-table__td">
-                      <span className="ax-badge ax-badge--soft ax-badge--pill">
-                        {predefined ? "Predefined" : "Custom"}
-                      </span>
-                    </td>
-                    <td className="ax-table__td" style={{ minWidth: 260 }}>
-                      {predefined?.description || "—"}
-                    </td>
-                    <td className="ax-table__td" style={{ minWidth: 280 }}>
-                      {template.subject}
-                    </td>
-                    <td className="ax-table__td">
-                      {labelFor(LURE_TYPES, template.lureType)}
-                    </td>
-                    <td className="ax-table__td">
-                      {labelFor(CATEGORIES, template.category)}
-                    </td>
-                    <td className="ax-table__td">
-                      <span className="ax-badge ax-badge--soft ax-badge--pill">
-                        {template.difficulty}
-                      </span>
-                    </td>
-                    <td className="ax-table__td">
-                      {template.disclaimerEnabled ? "True" : "False"}
-                    </td>
-                    <td className="ax-table__td">
-                      <div
-                        className="ax-cluster"
-                        style={{ gap: "var(--ax-space-1)" }}
-                      >
-                        <button
-                          type="button"
-                          className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm"
-                          aria-label={`Preview ${template.name}`}
-                          onClick={() => setModal({ preview: template })}
-                        >
-                          {ICON_EYE}
-                        </button>
-                        {saved && (
-                          <button
-                            type="button"
-                            className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm"
-                            aria-label={`Edit ${template.name}`}
-                            onClick={() => setModal({ edit: template })}
-                          >
-                            {ICON_EDIT}
-                          </button>
-                        )}
-                        {saved && (
-                          <button
-                            type="button"
-                            className="ax-btn ax-btn--ghost ax-btn--icon ax-btn--sm"
-                            aria-label={`Delete ${template.name}`}
-                            onClick={() => deleteTemplate(template)}
-                          >
-                            {ICON_DELETE}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="ax-btn ax-btn--ghost ax-btn--sm"
-                          onClick={() => setModal({ detail: template })}
-                        >
-                          Details
-                        </button>
-                        <button
-                          type="button"
-                          className="ax-btn ax-btn--primary ax-btn--sm"
-                          disabled={usingPresetKey !== null}
-                          onClick={() => void useTemplateInCampaign(template, !saved ? predefined ?? undefined : undefined)}
-                        >
-                          {usingPresetKey === (predefined?.key ?? template.id) ? "Preparing…" : "Use in campaign"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+
       {modal === "create" && (
         <TemplateForm
           mode="create"
